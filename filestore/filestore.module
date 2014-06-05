@@ -1,0 +1,166 @@
+<?php
+
+module_load_include('inc', 'filestore', 'filestore');
+
+/**
+* Implements hook_menu().
+*/
+function filestore_menu() 
+{
+    $items = array();
+
+    $items['filestore/greet/%'] = array(
+        'title' => 'Hello World',
+        'page callback' => 'filestore_greet_page',
+        'page arguments' => array(2), 
+        'access arguments' => array('access content'),
+        'type' => MENU_CALLBACK,
+    );
+    
+    $items["filestore/tests/test-reading"] = array(
+        'title' => 'Test reading',
+        'access arguments' => array('access content'),
+        'file' => 'filestore.tests.inc',
+        'page callback' => 'filestore_tests_test_reading',
+        'type' => MENU_CALLBACK,
+    );
+    
+    $items["filestore/tests/test-writing"] = array(
+        'title' => 'Test writing',
+        'access arguments' => array('access content'),
+        'file' => 'filestore.tests.inc',
+        'page callback' => 'filestore_tests_test_writing',
+        'type' => MENU_CALLBACK,
+    );
+
+    $items["public/files/%/f"] = array(
+        'title' => 'Download File',
+        'access arguments' => array('access content'),
+        'page callback' => 'filestore_transfer_public_file',
+        'page arguments' => array(2),
+        'type' => MENU_CALLBACK,
+    );
+ 
+    $items['admin/config/media/filestore'] = array(
+        'title' => 'File Store', 
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('filestore_admin_config_form'),
+        'file' => 'filestore.admin.inc',
+        'access arguments' => array('access administration pages'),
+        'type' => MENU_NORMAL_ITEM,
+    );
+   
+    $items['admin/config/media/filestore/migrate-fields'] = array(
+        'title' => 'Migrate file fields', 
+        'page callback' => 'filestore_admin_config_migrate_fields',
+        'file' => 'filestore.admin.inc',
+        'access arguments' => array('access administration pages'),
+        'type' => MENU_NORMAL_ITEM,
+    );
+    
+    $items['admin/config/media/filestore/migrate-field/%'] = array(
+        'title' => 'Migrate file field', 
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('filestore_admin_config_migrate_field_form', 5),
+        'file' => 'filestore.admin.inc',
+        'access arguments' => array('access administration pages'),
+        'type' => MENU_CALLBACK,
+    );
+    
+    $items['admin/config/media/filestore/get-managed-files/%'] = array(
+        'title' => 'Export a list of managed files under a given field', 
+        'page callback' => 'filestore_admin_get_field_managed_files',
+        'page arguments' => array(5),
+        'file' => 'filestore.admin.inc',
+        'access arguments' => array('access administration pages'),
+        'type' => MENU_CALLBACK,
+    );
+
+    return $items;
+}
+
+function filestore_transfer_public_file()
+{
+    $args = func_get_args();
+    $scheme = array_shift($args); 
+    $path_components = $args;
+   
+    //var_dump($scheme);
+    //var_dump($args);
+
+    $target = implode('/', $path_components);
+    $uri = $scheme . '://' . $target;
+    
+    if (!is_file($uri)) {
+        drupal_not_found();
+    } 
+
+    if (!is_readable($uri)) {
+        drupal_access_denied();
+    }
+    
+    $headers = array( 
+        'Content-Type' => file_get_mimetype($uri),
+        'Content-Length' => filesize($uri),
+    );
+
+    $download = isset($_GET['download']);
+    if ($download) {
+        $basename = basename($target);
+        $headers += array(
+            'Content-Disposition' => "attachment; filename=${basename}",
+        );
+    }
+
+    file_transfer($uri, $headers);
+}
+
+function filestore_greet_page($name = 'nobody')
+{
+    return array(
+        'p-1' => array(
+            '#type' => 'markup',
+            '#markup' => t('<p>A page that greets you, @name!</p>', array('@name'=>$name)),
+        ),
+        'p-2' => array(
+            '#items' => array('alpha','beta','gamma'),
+            '#theme' => 'item_list__greeting', // '__greeting' denotes a theme suggestion
+        ),
+    );
+}
+
+/**
+ * Implements HOOK_stream_wrappers().
+ */
+function filestore_stream_wrappers() 
+{
+    return array(
+        FILESTORE_FTP_SCHEME  => array(
+            'name' => t('Public files from FTP site'),
+            'class' => 'FTP_Stream',
+            'description' => t('Public files from FTP site'),
+            'type' => STREAM_WRAPPERS_NORMAL,
+        ),
+    );
+}
+
+/**
+ * Implements HOOK_cron_queue_info().
+ */
+function filestore_cron_queue_info() 
+{
+    return array(
+        'filestore_field_migrate_data' => array(
+            'worker callback' => 'filestore_field_migration_queue_worker',
+            'time' => 15,
+        ),
+    );    
+}
+
+function filestore_field_migration_queue_worker($item)
+{ 
+   module_load_include('inc', 'filestore', 'filestore.admin'); 
+   return _filestore_admin_migrate_field_data_process($item);
+}
+
+

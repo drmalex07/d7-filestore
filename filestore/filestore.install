@@ -1,0 +1,25 @@
+<?php
+
+/**
+ * Implementation of HOOK_enable().
+ */
+function filestore_enable() 
+{
+    variable_set('filestore.ftp_stream.config', array(
+        'host' => 'localhost',
+        'username' => 'anonymous',
+        'password' => '',
+        'use_passive' => true,
+        'use_site_commands' => false,
+    ));
+    
+    return;
+}
+
+/**
+ * Implementation of HOOK_disable().
+ */
+function filestore_disable() 
+{
+    return;
+}

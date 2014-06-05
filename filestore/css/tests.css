@@ -1,0 +1,14 @@
+pre {
+    border: solid 1px #aaa;
+    background: #ddd;
+}
+
+dt { 
+    font-weight: bold 
+}
+dd {
+    
+}
+
+div.span-50p { width: 50%; }
+div.span-70p { width: 70%; }

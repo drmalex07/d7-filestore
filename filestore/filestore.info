@@ -1,0 +1,4 @@
+name = File Store
+description = A module for alternative File Storage
+package = Hello Galaxy
+core = 7.x
